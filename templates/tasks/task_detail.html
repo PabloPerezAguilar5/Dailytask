@@ -1,0 +1,205 @@
+{% extends 'base.html' %}
+{% load django_bootstrap5 %}
+
+{% block title %}{{ task.title }} - DailyTask{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4>{{ task.title }}</h4>
+                <span class="badge {% if task.status == 'completed' %}bg-success{% else %}bg-warning{% endif %}">
+                    {% if task.status == 'completed' %}Completada{% else %}Pendiente{% endif %}
+                </span>
+            </div>
+            <div class="card-body">
+                <div class="mb-4">
+                    <h5>Descripción</h5>
+                    <p>{{ task.description }}</p>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Detalles</h5>
+                        <ul class="list-unstyled">
+                            <li><strong>Creado por:</strong> {{ task.created_by.username }}</li>
+                            <li><strong>Asignado a:</strong> {{ task.assigned_to.username }}</li>
+                            <li><strong>Puntos:</strong> {{ task.points }}</li>
+                            <li><strong>Prioridad:</strong> 
+                                <span class="badge {% if task.priority == 'high' %}bg-danger{% elif task.priority == 'medium' %}bg-warning{% else %}bg-info{% endif %}">
+                                    {{ task.priority|title }}
+                                </span>
+                            </li>
+                            <li><strong>Fecha límite:</strong> {{ task.due_date|date:"d/m/Y" }}</li>
+                            <li><strong>Fecha de creación:</strong> {{ task.created_at|date:"d/m/Y H:i" }}</li>
+                            {% if task.completed_at %}
+                                <li><strong>Completada el:</strong> {{ task.completed_at|date:"d/m/Y H:i" }}</li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h5>Acciones</h5>
+                        {% if task.status == 'pending' and task.assigned_to == user %}
+                            <button class="btn btn-success mb-2" id="completeTaskBtn" data-task-id="{{ task.id }}">
+                                Completar Tarea
+                            </button>
+                        {% endif %}
+                        
+                        {% if task.created_by == user %}
+                            <button class="btn btn-primary mb-2" data-bs-toggle="modal" data-bs-target="#editTaskModal" id="editTaskBtn" data-task-id="{{ task.id }}">
+                                Editar Tarea
+                            </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h4>Mi Puntuación</h4>
+            </div>
+            <div class="card-body text-center">
+                <h2 class="display-4">{{ user.points }}</h2>
+                <p class="mb-0">puntos totales</p>
+                <a href="{% url 'tasks:leaderboard' %}" class="btn btn-outline-primary mt-3">
+                    Ver Clasificación
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para editar tarea -->
+<div class="modal fade" id="editTaskModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar Tarea</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editTaskForm">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="title" class="form-label">Título</label>
+                        <input type="text" class="form-control" id="title" name="title" value="{{ task.title }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Descripción</label>
+                        <textarea class="form-control" id="description" name="description" rows="3">{{ task.description }}</textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="assigned_to" class="form-label">Asignar a</label>
+                        <select class="form-select" id="assigned_to" name="assigned_to" required>
+                            {% for member in family_members %}
+                                <option value="{{ member.id }}" {% if member.id == task.assigned_to.id %}selected{% endif %}>
+                                    {{ member.username }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="points" class="form-label">Puntos</label>
+                        <input type="number" class="form-control" id="points" name="points" value="{{ task.points }}" min="1">
+                    </div>
+                    <div class="mb-3">
+                        <label for="priority" class="form-label">Prioridad</label>
+                        <select class="form-select" id="priority" name="priority">
+                            <option value="low" {% if task.priority == 'low' %}selected{% endif %}>Baja</option>
+                            <option value="medium" {% if task.priority == 'medium' %}selected{% endif %}>Media</option>
+                            <option value="high" {% if task.priority == 'high' %}selected{% endif %}>Alta</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="due_date" class="form-label">Fecha límite</label>
+                        <input type="date" class="form-control" id="due_date" name="due_date" value="{{ task.due_date|date:'Y-m-d' }}">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="saveTaskBtn" data-task-id="{{ task.id }}">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const completeTaskBtn = document.getElementById('completeTaskBtn');
+    if (completeTaskBtn) {
+        completeTaskBtn.addEventListener('click', function() {
+            const taskId = this.getAttribute('data-task-id');
+            completeTask(taskId);
+        });
+    }
+
+    const saveTaskBtn = document.getElementById('saveTaskBtn');
+    if (saveTaskBtn) {
+        saveTaskBtn.addEventListener('click', function() {
+            const taskId = this.getAttribute('data-task-id');
+            editTask(taskId);
+        });
+    }
+});
+
+function completeTask(taskId) {
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const headers = {
+        'X-CSRFToken': csrfToken
+    };
+    
+    fetch(`/tasks/${taskId}/complete/`, {
+        method: 'POST',
+        headers: headers
+    })
+    .then(function(response) {
+        return response.json();
+    })
+    .then(function(data) {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.error);
+        }
+    })
+    .catch(function(error) {
+        console.error('Error:', error);
+        alert('Ocurrió un error al completar la tarea');
+    });
+}
+
+function editTask(taskId) {
+    const formData = new FormData(document.getElementById('editTaskForm'));
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const headers = {
+        'X-CSRFToken': csrfToken
+    };
+    
+    fetch(`/tasks/${taskId}/edit/`, {
+        method: 'POST',
+        body: formData,
+        headers: headers
+    })
+    .then(function(response) {
+        return response.json();
+    })
+    .then(function(data) {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.error);
+        }
+    })
+    .catch(function(error) {
+        console.error('Error:', error);
+        alert('Ocurrió un error al editar la tarea');
+    });
+}
+</script>
+{% endblock %} 

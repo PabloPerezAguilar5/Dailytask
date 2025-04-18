@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% load django_bootstrap5 %}
+
+{% block title %}Registro - DailyTask{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="text-center">Registro</h3>
+            </div>
+            <div class="card-body">
+                <form id="registerForm" method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    {% bootstrap_form_errors form %}
+                    
+                    {% bootstrap_field form.username %}
+                    {% bootstrap_field form.password1 %}
+                    {% bootstrap_field form.password2 %}
+                    {% bootstrap_field form.face_image %}
+                    {% bootstrap_field form.family_group %}
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">Registrarse</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('registerForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    
+    // Validar el tamaño de la imagen
+    const faceImage = document.getElementById('id_face_image').files[0];
+    if (faceImage && faceImage.size > 2 * 1024 * 1024) { // 2MB
+        alert('La imagen es demasiado grande. Por favor, sube una imagen de menos de 2MB.');
+        return;
+    }
+    
+    // Mostrar indicador de carga
+    const submitButton = this.querySelector('button[type="submit"]');
+    submitButton.disabled = true;
+    submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Registrando...';
+    
+    fetch('{% url "user:register" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        credentials: 'same-origin'
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(data => {
+                throw new Error(data.error || 'Error en la respuesta del servidor');
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            window.location.href = data.redirect;
+        } else {
+            alert(data.error || 'Ocurrió un error durante el registro');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert(error.message || 'Ocurrió un error durante el registro');
+    })
+    .finally(() => {
+        // Restaurar el botón
+        submitButton.disabled = false;
+        submitButton.innerHTML = 'Registrarse';
+    });
+});
+</script>
+{% endblock %} 

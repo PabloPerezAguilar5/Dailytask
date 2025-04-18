@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% load django_bootstrap5 %}
+
+{% block title %}Clasificación - DailyTask{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">Clasificación del Grupo Familiar</h2>
+    
+    <div class="row">
+        {% for member in leaderboard %}
+            <div class="col-md-4 mb-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ member.username }}</h5>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <p class="mb-1">
+                                    <i class="bi bi-star-fill text-warning"></i>
+                                    <span class="ms-2">{{ member.points }} puntos</span>
+                                </p>
+                                <p class="mb-0">
+                                    <i class="bi bi-check-circle-fill text-success"></i>
+                                    <span class="ms-2">{{ member.completed_tasks }} tareas completadas</span>
+                                </p>
+                            </div>
+                            <a href="{% url 'user:profile' username=member.username %}" class="btn btn-outline-primary">
+                                <i class="bi bi-person"></i> Ver perfil
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% empty %}
+            <div class="col-12">
+                <div class="alert alert-info">
+                    No hay miembros en el grupo familiar.
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %} 

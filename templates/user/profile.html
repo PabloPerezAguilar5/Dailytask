@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+{% load django_bootstrap5 %}
+
+{% block title %}Perfil - {{ profile_user.username }} - DailyTask{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-body text-center">
+                    {% if profile_user.google_profile_picture %}
+                        <img src="{{ profile_user.google_profile_picture }}" alt="Foto de perfil" class="rounded-circle mb-3" style="width: 150px; height: 150px; object-fit: cover;">
+                    {% else %}
+                        <div class="rounded-circle mb-3 bg-light d-flex align-items-center justify-content-center" style="width: 150px; height: 150px; margin: 0 auto;">
+                            <i class="bi bi-person-circle" style="font-size: 5rem;"></i>
+                        </div>
+                    {% endif %}
+                    <h3 class="card-title">{{ profile_user.username }}</h3>
+                    <p class="text-muted">
+                        {% if profile_user.family_group %}
+                            Grupo: {{ profile_user.family_group.name }}
+                        {% else %}
+                            Sin grupo familiar
+                        {% endif %}
+                    </p>
+                    <div class="d-flex justify-content-center mb-3">
+                        <div class="px-3 border-end">
+                            <h4>{{ profile_user.points }}</h4>
+                            <small class="text-muted">Puntos</small>
+                        </div>
+                        <div class="px-3">
+                            <h4>{{ tasks|length }}</h4>
+                            <small class="text-muted">Tareas</small>
+                        </div>
+                    </div>
+                    {% if user == profile_user and not profile_user.family_group %}
+                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createFamilyModal">
+                            Crear Grupo Familiar
+                        </button>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if profile_user.family_group %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Miembros del Grupo</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled">
+                        {% for member in family_members %}
+                            <li class="mb-2 d-flex justify-content-between align-items-center">
+                                <a href="{% url 'user:profile' member.username %}" class="text-decoration-none">
+                                    {{ member.username }}
+                                </a>
+                                <span class="badge bg-primary">{{ member.points }} pts</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Tareas Asignadas</h5>
+                </div>
+                <div class="card-body">
+                    {% if tasks %}
+                        <div class="list-group">
+                            {% for task in tasks %}
+                                <div class="list-group-item">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h6 class="mb-1">{{ task.title }}</h6>
+                                        <small class="text-muted">{{ task.points }} pts</small>
+                                    </div>
+                                    <p class="mb-1">{{ task.description }}</p>
+                                    <small class="text-muted">
+                                        Estado: 
+                                        {% if task.status == 'completed' %}
+                                            <span class="text-success">Completada</span>
+                                        {% else %}
+                                            <span class="text-warning">Pendiente</span>
+                                        {% endif %}
+                                    </small>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted mb-0">No hay tareas asignadas.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if created_tasks %}
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Tareas Creadas</h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        {% for task in created_tasks %}
+                            <div class="list-group-item">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">{{ task.title }}</h6>
+                                    <small class="text-muted">Asignada a: {{ task.assigned_to.username }}</small>
+                                </div>
+                                <p class="mb-1">{{ task.description }}</p>
+                                <small class="text-muted">
+                                    Estado: 
+                                    {% if task.status == 'completed' %}
+                                        <span class="text-success">Completada</span>
+                                    {% else %}
+                                        <span class="text-warning">Pendiente</span>
+                                    {% endif %}
+                                </small>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% if user == profile_user and not profile_user.family_group %}
+<!-- Modal para crear grupo familiar -->
+<div class="modal fade" id="createFamilyModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Crear Grupo Familiar</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createFamilyForm">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="familyName" class="form-label">Nombre del grupo</label>
+                        <input type="text" class="form-control" id="familyName" name="name" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="createFamily()">Crear</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function createFamily() {
+    const formData = new FormData(document.getElementById('createFamilyForm'));
+    
+    fetch('{% url "user:create_family" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert(data.error || 'Error al crear el grupo familiar');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error al crear el grupo familiar');
+    });
+}
+</script>
+{% endif %}
+{% endblock %} 

@@ -1,0 +1,7 @@
+Django==5.2
+opencv-python==4.9.0.80
+django-bootstrap5==23.3
+Pillow==10.2.0
+python-dotenv==1.0.1
+numpy==1.26.4 
+django-allauth==0.61.1
