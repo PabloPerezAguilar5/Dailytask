@@ -32,7 +32,6 @@ DailyTask is a web application designed to help families manage and track daily 
   - Django 5.2
   - Python 3.x
   - SQLite (development)
-  - OpenCV for facial recognition
 
 - **Frontend**
   - HTML5
