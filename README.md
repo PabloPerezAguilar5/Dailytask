@@ -33,13 +33,6 @@ DailyTask is a web application designed to help families manage and track daily 
   - Python 3.x
   - SQLite (development)
 
-- **Frontend**
-  - HTML5
-  - CSS3
-  - Bootstrap 5
-  - JavaScript
-  - Django Templates
-
 - **Authentication**
   - Django Authentication
   - Google OAuth2
